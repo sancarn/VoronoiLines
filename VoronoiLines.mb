@@ -1,0 +1,93 @@
+'If selection <= 1 then end program
+if selectioninfo(3) <= 1 then
+	note "VoronoiLines needs at least 2 objects to be selected. Select 2 line objects and then proceed."
+	end program
+end if
+
+'Create the table which will store the voronoi. First we will add points to this table then we will add the voronoi.
+Dim fVoronois as String
+fVoronois = FileSaveAsDlg("","VoronoiLines","TAB","Where do you want to save the VoronoiLines table?")
+If fVoronois = "" then
+	End Program
+End if
+
+'Create table to store Voronoi generated, from user's chosen file path
+Create Table VoronoiLines using SelectionInfo(1) File fVoronois Hide
+Create Map For VoronoiLines CoordSys table SelectionInfo(1)
+alter table VoronoiLines (add NumberID Integer) 
+
+
+'Variable to store temporary file paths
+Dim tmpFile as string
+
+'Create temporary table to store points for voronoi
+tmpFile = TempFileName$(GetFolderPath$(28) & "\Mapinfo\" )
+Create Table VoronoiPoints using SelectionInfo(1) File tmpFile Hide
+Create Map For VoronoiPoints CoordSys table SelectionInfo(1)
+alter table VoronoiPoints (add NumberID Integer) 
+
+'This is the selection table to do the voronoi of. This will hold rowids that we will use to cross reference the voronoi data later.
+tmpFile = TempFileName$(GetFolderPath$(28) & "\Mapinfo\" )
+Commit Table selection as tmpFile
+close table selection
+open table tmpFile as ~TempLinesTable 'hide
+alter table ~TempLinesTable (add NumberID Integer) 
+update ~TempLinesTable set NumberID = rowid
+commit table ~TempLinesTable
+
+'Create point objects from lines table, a point will be created at every vertex/node of the line.
+Set CoordSys table ~TempLinesTable
+Dim iRow, pNum, nNum, thisNumber as integer, thisObject as object
+for iRow = 1 to Tableinfo(~TempLinesTable,8)
+	fetch rec iRow from ~TempLinesTable
+	thisObject = ~TempLinesTable.obj
+	thisNumber = ~TempLinesTable.NumberID 
+	for pNum = 1 to ObjectInfo(thisObject,21)
+		for nNum = 1 to ObjectInfo(thisObject,20)
+			'INSERT POINT INTO VoronoiPoints
+			insert into VoronoiPoints (obj, NumberID) values (CreatePoint(ObjectNodeX(thisObject, pNum, nNum),ObjectNodeY(thisObject, pNum, nNum)), thisNumber)
+		next
+	next
+next
+
+'Voronoi points table
+Create Object As Voronoi from VoronoiPoints Into Table VoronoiLines Data NumberID=NumberID
+
+'Drop temporary VoronoiPoints table as no longer needed, in the extended algorithm these stay till the end.
+Drop Table VoronoiPoints
+
+'Get max NumberID
+select Max(NumberID) "NumberID" from VoronoiLines into qINums
+fetch first from qINums
+Dim iNum, iNums as Integer
+iNums = qINums.NumberID
+Close Table qINums
+
+'Loop through all voronoi polygons, combine where NumberIDs match
+for iNum = 1 to iNums
+	print iNum
+	select * from voronoilines where numberid = iNum into Q
+	objects combine data NumberID = NumberID
+	close table q
+next
+close table selection
+
+'Update voronoi table with column values then delete ~TempLinesTable.
+commit table voronoilines
+Dim i as integer, aCol as alias
+for i = 1 to numcols(~TempLinesTable)-1
+	aCol = "col" & i
+	Add Column "voronoilines" (aCol )From ~TempLinesTable Set To aCol Where NumberID = NumberID
+next
+Drop Table ~TempLinesTable
+
+'Drop NumberID column
+commit table voronoilines
+Alter Table voronoilines (Drop NumberID)
+close table voronoilines
+open table fVoronois 
+
+'If front window is a map, add voronoi to current map.
+if windowinfo(frontwindow(),3) = 1 then
+	Add Map Window frontwindow() Auto Layer PathToTableName$(fVoronois)
+end if
