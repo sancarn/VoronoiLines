@@ -19,6 +19,4 @@ The main downfall of this algorithm can be shown in the below example.
 
 Essentially what hapenned here is that where the green line met the red, that green vertice was lost in the voronoi so it wasn't taken into account. That's one problem but not the main problem as shown in this example:
 
-![V1Test2](V1Test_2.png)
-
 ![V1Resu2](V1Result_2.png)
