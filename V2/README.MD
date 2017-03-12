@@ -31,23 +31,25 @@ We simple extend this algorithm so we are no longer looking at individual points
 ```
 'Create point objects from lines table, a point will be created at every vertex/node of the line.
 Set CoordSys table ~TempLinesTable
-Dim iRow, pNum, nNum, thisNumber as integer, thisObject as object
+Dim iRow, pNum, nNum, thisNumber as integer, thisObject as object, X1, X2, Y1, Y2 as float
+Dim resolution as integer
+resolution = 3
 for iRow = 1 to Tableinfo(~TempLinesTable,8)
-	fetch rec iRow from ~TempLinesTable
-	thisObject = ~TempLinesTable.obj
-	thisNumber = ~TempLinesTable.NumberID 
-	for pNum = 1 to ObjectInfo(thisObject,21)
-		for nNum = 1 to ObjectInfo(thisObject,20) - 1
-			'Get start and end locations
-      X1 = ObjectNodeX(thisObject, pNum, nNum)
-      Y1 = ObjectNodeY(thisObject, pNum, nNum)
-      X2 = ObjectNodeX(thisObject, pNum, nNum+1)
-      Y2 = ObjectNodeY(thisObject, pNum, nNum+1)
-      
-      'Insert line into VoronoiPoints
-      Call createLinePoints(X1,Y1,X2,Y2,resolution,"VoronoiPoints",NumBerID as integer)
-		next
-	next
+    fetch rec iRow from ~TempLinesTable
+    thisObject = ~TempLinesTable.obj
+    thisNumber = ~TempLinesTable.NumberID 
+    for pNum = 1 to ObjectInfo(thisObject,21)
+        for nNum = 1 to ObjectInfo(thisObject,20) - 1
+            'Get start and end locations
+			X1 = ObjectNodeX(thisObject, pNum, nNum)
+			Y1 = ObjectNodeY(thisObject, pNum, nNum)
+			X2 = ObjectNodeX(thisObject, pNum, nNum+1)
+			Y2 = ObjectNodeY(thisObject, pNum, nNum+1)
+			
+			'Insert line into VoronoiPoints
+			Call createLinePoints(X1,Y1,X2,Y2,resolution,"VoronoiPoints",thisNumber)
+        next
+    next
 next
 
 Sub createLinePoints(X1 as float,Y1 as float,X2 as float,Y2 as float,byval resolution as integer, byval insertTo as string, NumberID as integer)
@@ -61,5 +63,7 @@ Sub createLinePoints(X1 as float,Y1 as float,X2 as float,Y2 as float,byval resol
   next
 End Sub
 ```
+
+Ultimately we do exactly the same as before however now we pass the line to a function which creates points along the line.
 
 # Results
